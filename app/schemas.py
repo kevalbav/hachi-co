@@ -43,3 +43,14 @@ class MetricCreate(BaseModel):
 # helper to mint ids client-side if you want
 def new_id() -> str:
     return str(uuid4())
+
+
+class TaskCreate(BaseModel):
+    workspace_id: str
+    date: date
+    title: str = Field(..., min_length=1)
+    effort_mins: int = 0
+
+class TaskStatusUpdate(BaseModel):
+    status: str  # "open" or "done"
+

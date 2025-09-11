@@ -52,3 +52,13 @@ class WorkspaceKPI(Base):
     workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False)
     kpi_id = Column(String, ForeignKey("kpis.id"), nullable=False)
     __table_args__ = (PrimaryKeyConstraint("workspace_id", "kpi_id"),)
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+    id = Column(String, primary_key=True)                  # uuid
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False)
+    date = Column(Date, nullable=False)                    # day the task belongs to
+    title = Column(String, nullable=False)
+    status = Column(String, default="open")                # "open" | "done"
+    effort_mins = Column(Integer, default=0)

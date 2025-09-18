@@ -3,3 +3,4 @@ __pycache__
 .env
 dev.db
 samples/*.csv
+.env

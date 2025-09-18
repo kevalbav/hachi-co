@@ -1,11 +1,29 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    DATABASE_URL: str
-    API_KEY: str = "dev-key"
-    API_KEY_HEADER: str = "x-api-key"
+    # existing fields
+    api_key: str = "dev-key"
+    database_url: str = "sqlite:///app.db"
 
-    class Config:
-        env_file = ".env"
+    # OAuth (optional for dev)
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    oauth_redirect_base: str | None = "http://localhost:8000"
+
+    # load .env, ignore unknown keys so new vars don't break boot
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    # ---- Back-compat so old code using UPPERCASE keeps working ----
+    @property
+    def API_KEY(self) -> str:
+        return self.api_key
+
+    @property
+    def DATABASE_URL(self) -> str:
+        return self.database_url
 
 settings = Settings()

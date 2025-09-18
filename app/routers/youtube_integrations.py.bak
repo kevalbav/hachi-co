@@ -1,0 +1,113 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from datetime import date
+
+from ..deps import get_db, require_api_key
+from .. import models
+
+router = APIRouter(
+    prefix="/integrations/youtube",
+    tags=["integrations"],
+    dependencies=[Depends(require_api_key)],
+)
+
+def _pick(model, *names):
+    """Return the first attribute that exists on model."""
+    for n in names:
+        if hasattr(model, n):
+            return getattr(model, n)
+    return None
+
+def _attr_name(attr):
+    """Get the column/attribute name for InstrumentedAttribute."""
+    return getattr(attr, "key", None) or getattr(attr, "name", None) or str(attr).split(".")[-1]
+
+def ensure_kpi(db: Session, kpi_id: str, name: str, channel: str, unit: str, aggregation: str = "last"):
+    kpi = db.query(models.KPI).filter(models.KPI.id == kpi_id).first()
+    if not kpi:
+        kpi = models.KPI(id=kpi_id, name=name, channel=channel, unit=unit, aggregation=aggregation)
+        db.add(kpi)
+        db.commit()
+
+@router.get("/status")
+def status(workspace_id: str, db: Session = Depends(get_db)):
+    integ = (
+        db.query(models.Integration)
+        .filter(models.Integration.provider == "youtube")
+        .filter(models.Integration.workspace_id == workspace_id if hasattr(models.Integration, "workspace_id") else True)
+        .first()
+    )
+    connected = bool(integ)
+
+    M = models.Metric
+    m_ws   = _pick(M, "workspace_id", "workspace", "workspaceId", "ws_id")
+    m_src  = _pick(M, "source")
+    m_date = _pick(M, "date", "dt", "day")
+
+    last_metric_date = None
+    if m_date is not None:
+        q = db.query(func.max(m_date))
+        if m_src is not None:
+            q = q.filter(m_src.like("youtube:%"))
+        if m_ws is not None:
+            q = q.filter(m_ws == workspace_id)
+        last_metric_date = q.scalar()
+
+    return {
+        "connected": connected,
+        "external_account_id": getattr(integ, "external_account_id", None) if integ else None,
+        "last_metric_date": last_metric_date,
+    }
+
+@router.post("/sync_channel")
+def sync_channel(workspace_id: str, db: Session = Depends(get_db)):
+    # Require that OAuth connection exists (we saved tokens in oauth_youtube callback)
+    integ = (
+        db.query(models.Integration)
+        .filter(models.Integration.provider == "youtube")
+        .filter(models.Integration.workspace_id == workspace_id if hasattr(models.Integration, "workspace_id") else True)
+        .first()
+    )
+    if not integ:
+        raise HTTPException(400, "YouTube is not connected for this workspace")
+
+    # Ensure standard KPIs exist (idempotent)
+    ensure_kpi(db, "k_yt_subs",  "Subscribers",  "YouTube", "count", aggregation="last")
+    ensure_kpi(db, "k_yt_views", "Total Views", "YouTube", "count", aggregation="last")
+
+    # TODO: replace the demo numbers with real API calls (channels().list(part="statistics", mine=True))
+    subs_value  = 12345.0
+    views_value = 678901.0
+
+    # Upsert metrics for TODAY
+    M = models.Metric
+    dcol = _pick(M, "date", "dt", "day")
+    wscol = _pick(M, "workspace_id", "workspace", "workspaceId", "ws_id")
+    today = date.today()
+
+    def upsert(kpi_id: str, value: float):
+        q = db.query(M).filter(M.kpi_id == kpi_id)
+        if dcol is not None:
+            q = q.filter(dcol == today)
+        if wscol is not None:
+            q = q.filter(wscol == workspace_id)
+        m = q.first()
+        if m:
+            m.value = value
+            m.source = "youtube:channels.statistics"
+            return
+
+        # Insert new
+        m = M(kpi_id=kpi_id, value=value, source="youtube:channels.statistics")
+        if dcol is not None:
+            setattr(m, _attr_name(dcol), today)     # Date object, not string
+        if wscol is not None:
+            setattr(m, _attr_name(wscol), workspace_id)
+        db.add(m)
+
+    upsert("k_yt_subs", subs_value)
+    upsert("k_yt_views", views_value)
+    db.commit()
+
+    return {"ok": True, "date": today.isoformat(), "updated": ["k_yt_subs", "k_yt_views"]}

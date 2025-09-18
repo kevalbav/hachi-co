@@ -26,10 +26,11 @@ def progress(kpi_id: str, period: str, db: Session = Depends(get_db)):
     month_end = date(year + (month // 12), 1 if month == 12 else month + 1, 1)
 
     actual = db.query(func.coalesce(func.sum(models.Metric.value), 0.0))\
-        .filter(models.Metric.kpi_id == kpi_id,
-                models.Metric.date >= month_start,
-                models.Metric.date < month_end)\
-        .scalar()
+    .filter(models.Metric.kpi_id == kpi_id,
+            models.Metric.workspace_id == workspace_id,
+            models.Metric.date >= month_start,
+            models.Metric.date < month_end)\
+    .scalar()
     goal = db.query(models.Goal).filter_by(kpi_id=kpi_id, period=period).first()
     target = goal.target_value if goal else 0.0
     pct = (actual / target * 100.0) if target > 0 else None
@@ -59,10 +60,11 @@ def progress_workspace(workspace_id: str, period: str, db: Session = Depends(get
     cards = []
     for kpi_id in kpi_ids:
         actual = db.query(func.coalesce(func.sum(models.Metric.value), 0.0))\
-            .filter(models.Metric.kpi_id == kpi_id,
-                    models.Metric.date >= month_start,
-                    models.Metric.date < month_end)\
-            .scalar()
+        .filter(models.Metric.kpi_id == kpi_id,
+                models.Metric.workspace_id == workspace_id,
+                models.Metric.date >= month_start,
+                models.Metric.date < month_end)\
+        .scalar()
         goal = db.query(models.Goal).filter_by(kpi_id=kpi_id, period=period).first()
         target = goal.target_value if goal else 0.0
         pct = (actual / target * 100.0) if target > 0 else None
@@ -75,7 +77,7 @@ def progress_workspace(workspace_id: str, period: str, db: Session = Depends(get
             "actual": actual,
             "target": target,
             "pct_of_target": pct,
-        })
+    })
 
     return {"workspace_id": workspace_id, "period": period, "cards": cards}
 

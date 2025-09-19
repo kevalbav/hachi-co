@@ -48,7 +48,8 @@ def _include_routers() -> None:
         "tasks",
         "oauth_youtube",
         "youtube_integrations",  
-        "references"  
+        "references", 
+        "dayplan" 
     ]:
         try:
             mod = importlib.import_module(f"{__package__}.routers.{modname}")

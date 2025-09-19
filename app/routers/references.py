@@ -9,8 +9,8 @@ from uuid import uuid4
 from ..deps import get_db
 from ..models import Reference
 from urllib.parse import urlparse
-import re
 
+import re
 
 class ReferenceCreate(BaseModel):
     url: str
@@ -21,6 +21,35 @@ class ReferenceUpdate(BaseModel):
     note: str = None
     tags: List[str] = None
 
+
+def detect_platform(url: str) -> str:
+    """Detect platform from URL"""
+    try:
+        domain = urlparse(url).netloc.lower()
+        
+        # Remove www. prefix
+        domain = domain.replace('www.', '')
+        
+        # Platform patterns
+        if re.search(r'youtube\.com|youtu\.be', domain):
+            return 'youtube'
+        elif re.search(r'instagram\.com', domain):
+            return 'instagram'
+        elif re.search(r'tiktok\.com', domain):
+            return 'tiktok'
+        elif re.search(r'twitter\.com|x\.com', domain):
+            return 'twitter'
+        elif re.search(r'linkedin\.com', domain):
+            return 'linkedin'
+        elif re.search(r'pinterest\.com', domain):
+            return 'pinterest'
+        elif re.search(r'facebook\.com|fb\.com', domain):
+            return 'facebook'
+        else:
+            return 'website'
+            
+    except Exception:
+        return 'unknown'
 
 # Predefined tags for social media professionals
 PREDEFINED_TAGS = [

@@ -9,6 +9,11 @@ class Settings(BaseSettings):
     google_client_id: str | None = None
     google_client_secret: str | None = None
     oauth_redirect_base: str | None = "http://localhost:8000"
+    
+    # Instagram OAuth
+    instagram_client_id: str | None = None
+    instagram_client_secret: str | None = None
+    frontend_url: str = "http://localhost:3000"
 
     # load .env, ignore unknown keys so new vars don't break boot
     model_config = SettingsConfigDict(
@@ -25,5 +30,21 @@ class Settings(BaseSettings):
     @property
     def DATABASE_URL(self) -> str:
         return self.database_url
+    
+    @property
+    def INSTAGRAM_CLIENT_ID(self) -> str | None:
+        return self.instagram_client_id
+    
+    @property
+    def INSTAGRAM_CLIENT_SECRET(self) -> str | None:
+        return self.instagram_client_secret
+    
+    @property
+    def OAUTH_REDIRECT_BASE(self) -> str | None:
+        return self.oauth_redirect_base
+    
+    @property
+    def FRONTEND_URL(self) -> str:
+        return self.frontend_url
 
 settings = Settings()

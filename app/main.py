@@ -49,7 +49,9 @@ def _include_routers() -> None:
         "oauth_youtube",
         "youtube_integrations",  
         "references", 
-        "dayplan" 
+        "dayplan",
+        "instagram_integrations",
+        "oauth_instagram"
     ]:
         try:
             mod = importlib.import_module(f"{__package__}.routers.{modname}")
